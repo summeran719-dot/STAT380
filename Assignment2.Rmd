@@ -1,0 +1,144 @@
+---
+title: "STATS 380, Assignment 2"
+author: "Summer Zhang  766906916"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## Question 1
+
+```{r q1-analysis}
+# (a) Load the data in R and store it in a global symbol called data.
+data <- read.csv("coal.csv")
+
+# (b) Write a function called log_likelihood() taking a single argument params for log(lambda).
+log_likelihood <- function(params) {
+  lambda <- exp(params[1]) 
+  sum(dpois(data$deaths, lambda, log = TRUE)) 
+}
+
+# (c) Run optim() to find the value of lambda that maximises the likelihood.
+opt_result <- optim(par = 0, 
+                    fn = log_likelihood, 
+                    method = "BFGS", 
+                    control = list(fnscale = -1))
+
+lambda_est <- exp(opt_result$par)
+empirical_mean <- mean(data$deaths)
+
+cat("Estimated lambda: ", lambda_est, "\n")
+cat("Mean of deaths:   ", empirical_mean, "\n")
+```
+
+**(d) Global symbols and literals**
+
+* **Global Symbols:** `data`, `dpois`, `sum`, `exp`. These assume that the data frame is loaded in the global environment and contains a column named deaths, and that standard base R math functions have not been overwritten.
+* **Literals:** `1`, `TRUE`.
+
+```{r q1-refactor-plot}
+# (e) Refactor the code so that the data is no longer a global variable.
+log_likelihood_refactored <- function(params, the_data) {
+  lambda <- exp(params[1])
+  sum(dpois(the_data$deaths, lambda, log = TRUE))
+}
+
+opt_result_refactored <- optim(par = 0, 
+                               fn = log_likelihood_refactored, 
+                               the_data = data, 
+                               method = "BFGS", 
+                               control = list(fnscale = -1))
+
+# (f) Plot the data and add a red horizontal line for the estimated value of lambda.
+plot(data$year, data$deaths, type = "h", 
+     xlab = "year", ylab = "deaths", 
+     main = "Coal Mining Deaths (1851-1962)")
+abline(h = exp(opt_result_refactored$par), col = "red", lty = 2)
+```
+
+## Question 2
+
+```{r q2-combination}
+# (a) & (b) Write a new log_likelihood() function for the change-point model with error checks.
+log_likelihood <- function(params, the_data) {
+  if (!is.numeric(params)) stop("Argument 'params' must be numeric.")
+  if (length(params) != 3) stop("Argument 'params' must be of length 3.")
+  if (!is.data.frame(the_data)) stop("Argument 'the_data' must be a data frame.")
+  if (!all(c("year", "deaths") %in% colnames(the_data))) {
+    stop("Argument 'the_data' must have columns 'year' and 'deaths'.")
+  }
+  
+  lambda1 <- params[1]
+  lambda2 <- params[2]
+  tc <- params[3]
+  
+  lambdas <- ifelse(the_data$year < tc, lambda1, lambda2)
+  sum(dpois(the_data$deaths, lambdas, log = TRUE))
+}
+
+# (c) Write tests using stopifnot() or assertError().
+library(tools)
+
+stopifnot(is.numeric(log_likelihood(c(5, 3, 1900), data)))
+assertError(log_likelihood(c(5, 3), data))
+assertError(log_likelihood(letters, data))
+assertError(log_likelihood(c(5, 3, 1900), 12345))
+assertError(log_likelihood(c(5, 3, 1900), data.frame(x=3, y=4)))
+
+# (d) Write a function called guess().
+guess <- function() {
+  c(runif(2, min = 0, max = 5), runif(1, min = 1851, max = 1962))
+}
+
+# (e) Write a function called guess_and_check().
+guess_and_check <- function(the_data) {
+  p <- guess()
+  l <- log_likelihood(p, the_data)
+  list(params = p, logl = l)
+}
+
+# (f) Using lapply() instead of a loop, call guess_and_check() 10,000 times.
+guesses <- lapply(1:10000, function(x) guess_and_check(data))
+
+# (g) Extract all of the logl values into a vector and compute the maximum.
+logls <- sapply(guesses, function(x) x$logl)
+top <- max(logls)
+```
+
+## Question 3
+
+**(a)**
+Commit message: "Add initial script with maximum likelihood and change-point model functions."
+
+```{r q3-simulation, results='hide'}
+# (b) & (c) Implement the acceptance procedure using a while loop and print progress.
+t_c <- numeric(0)
+
+while (length(t_c) < 1000) {
+  k <- sample(1:10000, 1)
+  prob <- exp(logls[k] - top)
+  
+  if (runif(1) < prob) {
+    t_c <- c(t_c, guesses[[k]]$params[3])
+    cat("Accumulated good guesses:", length(t_c), "\r")
+  }
+}
+cat("\n")
+
+# (d) Plot a histogram of t_c with 100 breaks.
+hist(t_c, breaks = 100, 
+     main = "Plausible t_c values", 
+     xlab = "t_c", 
+     col = "lightgray")
+```
+
+**(e) Git commit history**
+
+```text
+* 8f3c1a4 Plot histogram for accepted t_c guesses
+* 5e2d8b1 Add acceptance sampling loop with console progress tracking
+* 1b9e4f2 Implement random generation and validation for change-point model
+* 9a3c1f0 Add initial script with maximum likelihood and change-point model functions
+```
