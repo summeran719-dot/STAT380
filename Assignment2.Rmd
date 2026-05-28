@@ -137,8 +137,8 @@ hist(t_c, breaks = 100,
 **(e) Git commit history**
 
 ```text
-* 8f3c1a4 Plot histogram for accepted t_c guesses
-* 5e2d8b1 Add acceptance sampling loop with console progress tracking
-* 1b9e4f2 Implement random generation and validation for change-point model
-* 9a3c1f0 Add initial script with maximum likelihood and change-point model functions
+* cdbaeba55bec2a387131f9fad0937cfe12d51cb3 Plot histogram for accepted t_c guesses
+* c0fd50ed8ab2c1da1bad38024ed96d3bf1396931 Add acceptance sampling loop with console progress tracking
+* 8e1bb6dfd105365c45a023f387346e1b49a7be6d Implement random generation and validation for change-point model
+* 5a47147153de648ef807427094fd41b34b623e9b Add initial script with maximum likelihood and change-point model functions
 ```
